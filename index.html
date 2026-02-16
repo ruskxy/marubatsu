@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>消えるマルバツ</title>
+
+<style>
+body{
+background:#000;
+color:#fff;
+font-family:system-ui;
+text-align:center;
+margin:0;
+}
+
+h1{ margin-top:16px; letter-spacing:3px; }
+
+#board{
+display:grid;
+grid-template-columns:repeat(3,90px);
+gap:12px;
+justify-content:center;
+margin:20px 0;
+}
+
+.cell{
+width:90px;height:90px;
+display:flex;align-items:center;justify-content:center;
+border:2px solid #333;border-radius:14px;
+transition:.2s;
+}
+
+svg{ width:70px;height:70px; }
+
+.o svg circle{
+stroke:#00f6ff;
+filter:drop-shadow(0 0 6px #00f6ff) drop-shadow(0 0 18px #00f6ff);
+stroke-width:7;
+fill:none;
+}
+
+.x svg line{
+stroke:#ff3df2;
+filter:drop-shadow(0 0 6px #ff3df2) drop-shadow(0 0 18px #ff3df2);
+stroke-width:7;
+stroke-linecap:round;
+}
+
+.old{ animation:blink .6s infinite alternate; opacity:.35; }
+
+@keyframes blink{
+from{ transform:scale(1); }
+to{ transform:scale(.8); }
+}
+
+.win{
+box-shadow:0 0 20px #fff,0 0 40px #fff,0 0 80px #fff;
+border-color:#fff;
+animation:flash 0.6s infinite alternate;
+}
+
+@keyframes flash{
+from{ transform:scale(1); }
+to{ transform:scale(1.08); }
+}
+
+button{
+background:#111;border:1px solid #555;color:white;
+padding:10px 18px;margin:5px;border-radius:10px;
+font-size:16px;
+}
+
+#status{font-size:18px;margin-top:10px;}
+#score{margin-top:10px;font-size:15px;color:#aaa;}
+</style>
+</head>
+
+<body>
+
+<h1>消えるマルバツ</h1>
+<div id="status"></div>
+<div id="board"></div>
+
+<button onclick="resetGame()">リセット</button>
+<button onclick="resetScore()">スコアクリア</button>
+
+<div id="score"></div>
+
+<script>
+const winPatterns=[
+[0,1,2],[3,4,5],[6,7,8],
+[0,3,6],[1,4,7],[2,5,8],
+[0,4,8],[2,4,6]
+];
+
+let board,turn,history,locked,winningLine=[];
+let score=JSON.parse(localStorage.getItem("score")||'{"○":0,"×":0}');
+
+const boardEl=document.getElementById("board");
+const statusEl=document.getElementById("status");
+const scoreEl=document.getElementById("score");
+
+function drawO(){
+return `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="35"/></svg>`;
+}
+
+function drawX(){
+return `<svg viewBox="0 0 100 100">
+<line x1="25" y1="25" x2="75" y2="75"/>
+<line x1="75" y1="25" x2="25" y2="75"/>
+</svg>`;
+}
+
+function init(){
+board=Array(9).fill("");
+turn="○";
+history={"○":[], "×":[]};
+locked=false;
+winningLine=[];
+render();
+}
+
+function render(){
+boardEl.innerHTML="";
+statusEl.textContent=locked?"ゲーム終了":"手番: "+turn;
+
+board.forEach((v,i)=>{
+const div=document.createElement("div");
+div.className="cell";
+
+if(v==="○"){div.innerHTML=drawO();div.classList.add("o");}
+if(v==="×"){div.innerHTML=drawX();div.classList.add("x");}
+
+const old=history[v]?.[0];
+if(old===i)div.classList.add("old");
+
+if(winningLine.includes(i)) div.classList.add("win");
+
+div.onclick=()=>place(i);
+boardEl.appendChild(div);
+});
+
+scoreEl.textContent=`○ ${score["○"]}勝　× ${score["×"]}勝`;
+}
+
+function place(i){
+if(locked||board[i]!=="")return;
+
+board[i]=turn;
+history[turn].push(i);
+
+if(history[turn].length>3){
+const removed=history[turn].shift();
+setTimeout(()=>{
+board[removed]="";
+render();
+},250);
+}
+
+const winResult=checkWin(turn);
+if(winResult){
+locked=true;
+winningLine=winResult;
+score[turn]++;
+localStorage.setItem("score",JSON.stringify(score));
+statusEl.textContent=turn+" の勝ち！";
+render();
+return;
+}
+
+turn=turn==="○"?"×":"○";
+render();
+}
+
+function checkWin(p){
+for(const pattern of winPatterns){
+if(pattern.every(i=>board[i]===p)){
+return pattern;
+}
+}
+return null;
+}
+
+function resetGame(){ init(); }
+
+function resetScore(){
+score={"○":0,"×":0};
+localStorage.setItem("score",JSON.stringify(score));
+render();
+}
+
+init();
+</script>
+</body>
+</html>
