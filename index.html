@@ -3,17 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>消えるマルバツ</title>
+<title>Neon Marubatsu</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#000000">
 
 <style>
-body{
-background:#000;
-color:#fff;
-font-family:system-ui;
-text-align:center;
-margin:0;
-}
-
+body{background:#000;color:#fff;font-family:system-ui;text-align:center;margin:0;}
 h1{ margin-top:16px; letter-spacing:3px; }
 
 #board{
@@ -48,27 +46,18 @@ stroke-linecap:round;
 }
 
 .old{ animation:blink .6s infinite alternate; opacity:.35; }
-
-@keyframes blink{
-from{ transform:scale(1); }
-to{ transform:scale(.8); }
-}
+@keyframes blink{ from{transform:scale(1);} to{transform:scale(.8);} }
 
 .win{
 box-shadow:0 0 20px #fff,0 0 40px #fff,0 0 80px #fff;
 border-color:#fff;
 animation:flash 0.6s infinite alternate;
 }
-
-@keyframes flash{
-from{ transform:scale(1); }
-to{ transform:scale(1.08); }
-}
+@keyframes flash{ from{transform:scale(1);} to{transform:scale(1.08);} }
 
 button{
 background:#111;border:1px solid #555;color:white;
-padding:10px 18px;margin:5px;border-radius:10px;
-font-size:16px;
+padding:10px 18px;margin:5px;border-radius:10px;font-size:16px;
 }
 
 #status{font-size:18px;margin-top:10px;}
@@ -78,7 +67,7 @@ font-size:16px;
 
 <body>
 
-<h1>消えるマルバツ</h1>
+<h1>NEON MARUBATSU</h1>
 <div id="status"></div>
 <div id="board"></div>
 
@@ -104,7 +93,6 @@ const scoreEl=document.getElementById("score");
 function drawO(){
 return `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="35"/></svg>`;
 }
-
 function drawX(){
 return `<svg viewBox="0 0 100 100">
 <line x1="25" y1="25" x2="75" y2="75"/>
@@ -132,8 +120,11 @@ div.className="cell";
 if(v==="○"){div.innerHTML=drawO();div.classList.add("o");}
 if(v==="×"){div.innerHTML=drawX();div.classList.add("x");}
 
-const old=history[v]?.[0];
-if(old===i)div.classList.add("old");
+// ★ 次ターンで消える時だけ点滅
+const oldest = history[v]?.[0];
+if(v===turn && history[v]?.length===3 && oldest===i){
+  div.classList.add("old");
+}
 
 if(winningLine.includes(i)) div.classList.add("win");
 
@@ -152,10 +143,7 @@ history[turn].push(i);
 
 if(history[turn].length>3){
 const removed=history[turn].shift();
-setTimeout(()=>{
-board[removed]="";
-render();
-},250);
+setTimeout(()=>{board[removed]="";render();},250);
 }
 
 const winResult=checkWin(turn);
@@ -175,15 +163,12 @@ render();
 
 function checkWin(p){
 for(const pattern of winPatterns){
-if(pattern.every(i=>board[i]===p)){
-return pattern;
-}
+if(pattern.every(i=>board[i]===p)) return pattern;
 }
 return null;
 }
 
 function resetGame(){ init(); }
-
 function resetScore(){
 score={"○":0,"×":0};
 localStorage.setItem("score",JSON.stringify(score));
