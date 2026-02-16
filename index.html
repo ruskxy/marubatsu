@@ -120,9 +120,9 @@ div.className="cell";
 if(v==="○"){div.innerHTML=drawO();div.classList.add("o");}
 if(v==="×"){div.innerHTML=drawX();div.classList.add("x");}
 
-// ★ 次ターンで消える時だけ点滅
+// ★ 次ターンで消える場合のみ点滅
 const oldest = history[v]?.[0];
-if(v===turn && history[v]?.length===3 && oldest===i){
+if(!locked && v===turn && history[v]?.length===3 && oldest===i){
   div.classList.add("old");
 }
 
@@ -141,20 +141,35 @@ if(locked||board[i]!=="")return;
 board[i]=turn;
 history[turn].push(i);
 
+// 4個目候補（まだ消さない）
+let removed=null;
 if(history[turn].length>3){
-const removed=history[turn].shift();
-setTimeout(()=>{board[removed]="";render();},250);
+  removed=history[turn][0];
 }
 
+// 先に勝利判定
 const winResult=checkWin(turn);
 if(winResult){
 locked=true;
 winningLine=winResult;
+
+// ★ 勝利時は点滅・削除完全停止
+history={"○":[], "×":[]};
+
 score[turn]++;
 localStorage.setItem("score",JSON.stringify(score));
 statusEl.textContent=turn+" の勝ち！";
 render();
 return;
+}
+
+// 勝っていなければ削除
+if(removed!==null){
+  history[turn].shift();
+  setTimeout(()=>{
+    board[removed]="";
+    render();
+  },250);
 }
 
 turn=turn==="○"?"×":"○";
@@ -169,6 +184,7 @@ return null;
 }
 
 function resetGame(){ init(); }
+
 function resetScore(){
 score={"○":0,"×":0};
 localStorage.setItem("score",JSON.stringify(score));
