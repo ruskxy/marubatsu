@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Neon Marubatsu</title>
-
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="manifest" href="manifest.json">
 
@@ -16,19 +15,19 @@ font-family:sans-serif;
 text-align:center;
 margin:0;
 padding:20px;
+overflow:hidden;
 }
 
 h1{
 margin:10px 0;
-font-weight:600;
 letter-spacing:2px;
 }
 
 .modeSwitch{
-margin:10px auto 20px;
 display:flex;
 justify-content:center;
 gap:10px;
+margin-bottom:20px;
 }
 
 .modeSwitch button{
@@ -37,17 +36,16 @@ border:1px solid #555;
 color:#fff;
 padding:8px 14px;
 border-radius:6px;
-font-size:14px;
 }
 
-.modeSwitch button.active{
+.modeSwitch .active{
 border-color:#0ff;
-box-shadow:0 0 8px #0ff;
+box-shadow:0 0 10px #0ff;
 }
 
 #board{
 width:300px;
-margin:0 auto;
+margin:auto;
 display:grid;
 grid-template-columns:repeat(3,1fr);
 gap:6px;
@@ -56,12 +54,13 @@ gap:6px;
 .cell{
 width:100px;
 height:100px;
+background:#111;
 display:flex;
 align-items:center;
 justify-content:center;
 font-size:60px;
-background:#111;
 border-radius:8px;
+transition:.2s;
 }
 
 .o{
@@ -93,9 +92,46 @@ box-shadow:0 0 12px #0ff;
 margin:15px;
 }
 
-button.reset{
+.reset{
 margin-top:10px;
 padding:8px 16px;
+}
+
+/* 爆発エフェクト */
+
+#boom{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:120px;
+color:#ff4444;
+opacity:0;
+pointer-events:none;
+text-shadow:0 0 30px red;
+}
+
+.flash{
+animation:flash .25s;
+}
+
+@keyframes flash{
+0%{background:#400}
+100%{background:#000}
+}
+
+.showBoom{
+animation:boomAnim .6s;
+}
+
+@keyframes boomAnim{
+0%{transform:scale(.5);opacity:0}
+40%{opacity:1}
+100%{transform:scale(1.4);opacity:0}
 }
 
 </style>
@@ -116,10 +152,13 @@ padding:8px 16px;
 
 <button class="reset" onclick="reset()">リセット</button>
 
+<div id="boom">💥</div>
+
 <script>
 
 const boardEl=document.getElementById("board")
 const statusEl=document.getElementById("status")
+const boomEl=document.getElementById("boom")
 
 let board=[]
 let turn="○"
@@ -144,7 +183,7 @@ turn="○"
 history={"○":[], "×":[]}
 locked=false
 winningLine=null
-bombIndex=Math.floor(Math.random()*9)
+bombIndex=Math.floor(Math.random()9)
 render()
 }
 
@@ -193,21 +232,17 @@ board[remove]=null
 }
 
 if(mode==="bomb" && i===bombIndex){
-
 explode(i)
-
 }
 
 let win=checkWin()
 
 if(win){
-
 locked=true
 winningLine=win
 statusEl.textContent=turn+" の勝ち！"
 render()
 return
-
 }
 
 turn=turn==="○"?"×":"○"
@@ -216,6 +251,15 @@ render()
 }
 
 function explode(i){
+
+document.body.classList.add("flash")
+
+boomEl.classList.add("showBoom")
+
+setTimeout(()=>{
+document.body.classList.remove("flash")
+boomEl.classList.remove("showBoom")
+},400)
 
 let r=Math.floor(i/3)
 let c=i%3
@@ -228,7 +272,7 @@ let nc=c+dc
 
 if(nr>=0&&nr<3&&nc>=0&&nc<3){
 
-let idx=nr*3+nc
+let idx=nr3+nc
 board[idx]=null
 
 }
