@@ -183,7 +183,7 @@ turn="○"
 history={"○":[], "×":[]}
 locked=false
 winningLine=null
-bombIndex=Math.floor(Math.random()9)
+bombIndex=Math.floor(Math.random()*9)
 render()
 }
 
@@ -253,7 +253,6 @@ render()
 function explode(i){
 
 document.body.classList.add("flash")
-
 boomEl.classList.add("showBoom")
 
 setTimeout(()=>{
@@ -272,7 +271,7 @@ let nc=c+dc
 
 if(nr>=0&&nr<3&&nc>=0&&nc<3){
 
-let idx=nr3+nc
+let idx=nr*3+nc
 board[idx]=null
 
 }
