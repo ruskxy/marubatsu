@@ -2,196 +2,299 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Neon Marubatsu</title>
 
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="theme-color" content="#000000">
 
 <style>
-body{background:#000;color:#fff;font-family:system-ui;text-align:center;margin:0;}
-h1{ margin-top:16px; letter-spacing:3px; }
+
+body{
+background:#000;
+color:#fff;
+font-family:sans-serif;
+text-align:center;
+margin:0;
+padding:20px;
+}
+
+h1{
+margin:10px 0;
+font-weight:600;
+letter-spacing:2px;
+}
+
+.modeSwitch{
+margin:10px auto 20px;
+display:flex;
+justify-content:center;
+gap:10px;
+}
+
+.modeSwitch button{
+background:#111;
+border:1px solid #555;
+color:#fff;
+padding:8px 14px;
+border-radius:6px;
+font-size:14px;
+}
+
+.modeSwitch button.active{
+border-color:#0ff;
+box-shadow:0 0 8px #0ff;
+}
 
 #board{
+width:300px;
+margin:0 auto;
 display:grid;
-grid-template-columns:repeat(3,90px);
-gap:12px;
-justify-content:center;
-margin:20px 0;
+grid-template-columns:repeat(3,1fr);
+gap:6px;
 }
 
 .cell{
-width:90px;height:90px;
-display:flex;align-items:center;justify-content:center;
-border:2px solid #333;border-radius:14px;
-transition:.2s;
+width:100px;
+height:100px;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:60px;
+background:#111;
+border-radius:8px;
 }
 
-svg{ width:70px;height:70px; }
-
-.o svg circle{
-stroke:#00f6ff;
-filter:drop-shadow(0 0 6px #00f6ff) drop-shadow(0 0 18px #00f6ff);
-stroke-width:7;
-fill:none;
+.o{
+color:#0ff;
+text-shadow:0 0 12px #0ff;
 }
 
-.x svg line{
-stroke:#ff3df2;
-filter:drop-shadow(0 0 6px #ff3df2) drop-shadow(0 0 18px #ff3df2);
-stroke-width:7;
-stroke-linecap:round;
+.x{
+color:#f0f;
+text-shadow:0 0 12px #f0f;
 }
 
-.old{ animation:blink .6s infinite alternate; opacity:.35; }
-@keyframes blink{ from{transform:scale(1);} to{transform:scale(.8);} }
+.old{
+opacity:.4;
+animation:blink 1s infinite;
+}
+
+@keyframes blink{
+0%,100%{opacity:.3}
+50%{opacity:1}
+}
 
 .win{
-box-shadow:0 0 20px #fff,0 0 40px #fff,0 0 80px #fff;
-border-color:#fff;
-animation:flash 0.6s infinite alternate;
-}
-@keyframes flash{ from{transform:scale(1);} to{transform:scale(1.08);} }
-
-button{
-background:#111;border:1px solid #555;color:white;
-padding:10px 18px;margin:5px;border-radius:10px;font-size:16px;
+background:#033;
+box-shadow:0 0 12px #0ff;
 }
 
-#status{font-size:18px;margin-top:10px;}
-#score{margin-top:10px;font-size:15px;color:#aaa;}
+#status{
+margin:15px;
+}
+
+button.reset{
+margin-top:10px;
+padding:8px 16px;
+}
+
 </style>
 </head>
 
 <body>
 
 <h1>NEON MARUBATSU</h1>
+
+<div class="modeSwitch">
+<button id="modeErase" class="active">消える</button>
+<button id="modeBomb">爆弾</button>
+</div>
+
 <div id="status"></div>
+
 <div id="board"></div>
 
-<button onclick="resetGame()">リセット</button>
-<button onclick="resetScore()">スコアクリア</button>
-
-<div id="score"></div>
+<button class="reset" onclick="reset()">リセット</button>
 
 <script>
-const winPatterns=[
+
+const boardEl=document.getElementById("board")
+const statusEl=document.getElementById("status")
+
+let board=[]
+let turn="○"
+let mode="erase"
+
+let history={"○":[], "×":[]}
+
+let bombIndex=Math.floor(Math.random()*9)
+
+let locked=false
+let winningLine=null
+
+const wins=[
 [0,1,2],[3,4,5],[6,7,8],
 [0,3,6],[1,4,7],[2,5,8],
 [0,4,8],[2,4,6]
-];
-
-let board,turn,history,locked,winningLine=[];
-let score=JSON.parse(localStorage.getItem("score")||'{"○":0,"×":0}');
-
-const boardEl=document.getElementById("board");
-const statusEl=document.getElementById("status");
-const scoreEl=document.getElementById("score");
-
-function drawO(){
-return `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="35"/></svg>`;
-}
-function drawX(){
-return `<svg viewBox="0 0 100 100">
-<line x1="25" y1="25" x2="75" y2="75"/>
-<line x1="75" y1="25" x2="25" y2="75"/>
-</svg>`;
-}
+]
 
 function init(){
-board=Array(9).fill("");
-turn="○";
-history={"○":[], "×":[]};
-locked=false;
-winningLine=[];
-render();
+board=new Array(9).fill(null)
+turn="○"
+history={"○":[], "×":[]}
+locked=false
+winningLine=null
+bombIndex=Math.floor(Math.random()*9)
+render()
 }
 
-function render(){
-boardEl.innerHTML="";
-statusEl.textContent=locked?"ゲーム終了":"手番: "+turn;
-
-board.forEach((v,i)=>{
-const div=document.createElement("div");
-div.className="cell";
-
-if(v==="○"){div.innerHTML=drawO();div.classList.add("o");}
-if(v==="×"){div.innerHTML=drawX();div.classList.add("x");}
-
-// ★ 次ターンで消える場合のみ点滅
-const oldest = history[v]?.[0];
-if(!locked && v===turn && history[v]?.length===3 && oldest===i){
-  div.classList.add("old");
+function reset(){
+init()
 }
 
-if(winningLine.includes(i)) div.classList.add("win");
+document.getElementById("modeErase").onclick=()=>{
+mode="erase"
+setMode()
+}
 
-div.onclick=()=>place(i);
-boardEl.appendChild(div);
-});
+document.getElementById("modeBomb").onclick=()=>{
+mode="bomb"
+setMode()
+}
 
-scoreEl.textContent=`○ ${score["○"]}勝　× ${score["×"]}勝`;
+function setMode(){
+
+document.getElementById("modeErase").classList.remove("active")
+document.getElementById("modeBomb").classList.remove("active")
+
+if(mode==="erase")
+document.getElementById("modeErase").classList.add("active")
+else
+document.getElementById("modeBomb").classList.add("active")
+
+reset()
 }
 
 function place(i){
-if(locked||board[i]!=="")return;
 
-board[i]=turn;
-history[turn].push(i);
+if(locked)return
+if(board[i])return
 
-// 4個目候補（まだ消さない）
-let removed=null;
+board[i]=turn
+history[turn].push(i)
+
+if(mode==="erase"){
+
 if(history[turn].length>3){
-  removed=history[turn][0];
+let remove=history[turn].shift()
+board[remove]=null
 }
 
-// 先に勝利判定
-const winResult=checkWin(turn);
-if(winResult){
-locked=true;
-winningLine=winResult;
-
-// ★ 勝利時は点滅・削除完全停止
-history={"○":[], "×":[]};
-
-score[turn]++;
-localStorage.setItem("score",JSON.stringify(score));
-statusEl.textContent=turn+" の勝ち！";
-render();
-return;
 }
 
-// 勝っていなければ削除
-if(removed!==null){
-  history[turn].shift();
-  setTimeout(()=>{
-    board[removed]="";
-    render();
-  },250);
+if(mode==="bomb" && i===bombIndex){
+
+explode(i)
+
 }
 
-turn=turn==="○"?"×":"○";
-render();
+let win=checkWin()
+
+if(win){
+
+locked=true
+winningLine=win
+statusEl.textContent=turn+" の勝ち！"
+render()
+return
+
 }
 
-function checkWin(p){
-for(const pattern of winPatterns){
-if(pattern.every(i=>board[i]===p)) return pattern;
-}
-return null;
+turn=turn==="○"?"×":"○"
+
+render()
 }
 
-function resetGame(){ init(); }
+function explode(i){
 
-function resetScore(){
-score={"○":0,"×":0};
-localStorage.setItem("score",JSON.stringify(score));
-render();
+let r=Math.floor(i/3)
+let c=i%3
+
+for(let dr=-1;dr<=1;dr++){
+for(let dc=-1;dc<=1;dc++){
+
+let nr=r+dr
+let nc=c+dc
+
+if(nr>=0&&nr<3&&nc>=0&&nc<3){
+
+let idx=nr*3+nc
+board[idx]=null
+
 }
 
-init();
+}
+}
+
+}
+
+function checkWin(){
+
+for(let w of wins){
+
+let[a,b,c]=w
+
+if(board[a]&&board[a]===board[b]&&board[a]===board[c])
+return w
+
+}
+
+return null
+}
+
+function render(){
+
+boardEl.innerHTML=""
+
+board.forEach((v,i)=>{
+
+let div=document.createElement("div")
+div.className="cell"
+
+if(v){
+
+div.textContent=v
+
+if(v==="○")div.classList.add("o")
+if(v==="×")div.classList.add("x")
+
+if(mode==="erase"){
+
+let oldest=history[v][0]
+
+if(v===turn && history[v].length===3 && oldest===i && !locked)
+div.classList.add("old")
+
+}
+
+}
+
+if(winningLine && winningLine.includes(i))
+div.classList.add("win")
+
+div.onclick=()=>place(i)
+
+boardEl.appendChild(div)
+
+})
+
+statusEl.textContent=locked?statusEl.textContent:"手番: "+turn
+
+}
+
+init()
+
 </script>
+
 </body>
 </html>
